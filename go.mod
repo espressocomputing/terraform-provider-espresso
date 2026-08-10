@@ -1,4 +1,4 @@
-module github.com/espressocomputing/terraform-provider-espresso
+module github.com/espressocomputing/espresso-terraform-provider
 
 go 1.25.8
 
