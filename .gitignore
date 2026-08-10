@@ -1,0 +1,6 @@
+/dist/
+terraform-provider-espresso
+*.tfstate
+*.tfstate.*
+.terraform/
+.terraform.lock.hcl

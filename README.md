@@ -1,5 +1,24 @@
 # Espresso Terraform provider
 
+Manage Espresso customer accounts, Snowflake credentials, and Snowflake and Databricks Warehouse Agent settings with Terraform.
+
+## Using the provider
+
+```hcl
+terraform {
+  required_providers {
+    espresso = {
+      source  = "espressocomputing/espresso"
+      version = "~> 0.1"
+    }
+  }
+}
+
+provider "espresso" {}
+```
+
+See the [provider documentation](docs/index.md) and individual resource and data-source pages under `docs/`.
+
 ## Authentication
 
 In the Espresso dashboard, select an existing account, open **Tools → API Keys**, choose **Generate API key → Organization key**, and copy the complete `ok_` secret. It cannot be displayed again. Set it as `ESPRESSO_API_KEY` and set the dashboard API origin as `ESPRESSO_ENDPOINT`.
@@ -7,6 +26,15 @@ In the Espresso dashboard, select an existing account, open **Tools → API Keys
 An organization admin must generate the key. The key is scoped to the selected account's Espresso organization rather than to the user who created it. The selected account is the bootstrap account, and each managed account becomes a sibling in that organization. Proxy keys are created separately and cannot authenticate Terraform.
 
 The provider manages accounts, Snowflake credentials, and typed Snowflake and Databricks Warehouse Agent settings. Native providers continue to own warehouse creation, deletion, grants, and settings outside Espresso's control.
+
+## Development
+
+This provider requires Go 1.25. Build and test it with:
+
+```shell
+go build ./...
+go test ./...
+```
 
 ## One customer per Databricks workspace
 

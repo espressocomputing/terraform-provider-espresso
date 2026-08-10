@@ -1,7 +1,7 @@
 package main
 
 import (
-	"github.com/espressocomputing/espresso-terraform-provider/internal/provider"
+	"github.com/espressocomputing/terraform-provider-espresso/internal/provider"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/plugin"
 )
 
