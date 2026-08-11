@@ -21,7 +21,7 @@ See the [provider documentation](docs/index.md) and individual resource and data
 
 ## Authentication
 
-Set an Espresso organization API key as `ESPRESSO_API_KEY` and the Espresso API origin as `ESPRESSO_ENDPOINT`.
+In the Espresso dashboard, select an existing account, open **Tools → API Keys**, choose **Generate API key → Organization key**, and copy the complete `ok_` secret. It cannot be displayed again. Set it as `ESPRESSO_API_KEY`.
 
 ## Development
 
