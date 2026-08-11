@@ -25,6 +25,58 @@ func TestProviderSchema(t *testing.T) {
 	}
 }
 
+func TestCreateOrAdoptAccount(t *testing.T) {
+	tests := []struct {
+		name            string
+		existing        bool
+		existingName    string
+		existingProduct string
+		expectedMethods []string
+		expectedError   bool
+	}{
+		{name: "create", expectedMethods: []string{http.MethodGet, http.MethodPost}},
+		{name: "adopt", existing: true, existingName: "Acme", existingProduct: "databricks", expectedMethods: []string{http.MethodGet}},
+		{name: "reconcile name", existing: true, existingName: "Old name", existingProduct: "databricks", expectedMethods: []string{http.MethodGet, http.MethodPut}},
+		{name: "reject product mismatch", existing: true, existingName: "Acme", existingProduct: "snowflake", expectedMethods: []string{http.MethodGet}, expectedError: true},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			var methods []string
+			server := httptest.NewServer(http.HandlerFunc(func(response http.ResponseWriter, request *http.Request) {
+				methods = append(methods, request.Method)
+				if request.Method == http.MethodGet {
+					if !test.existing {
+						response.WriteHeader(http.StatusNotFound)
+						return
+					}
+					response.Header().Set("Content-Type", "application/json")
+					json.NewEncoder(response).Encode(map[string]any{"name": test.existingName, "product": test.existingProduct})
+				}
+			}))
+			defer server.Close()
+
+			resource := New().ResourcesMap["espresso_account"]
+			data := schema.TestResourceDataRaw(t, resource.Schema, map[string]any{"slug": "acme", "display_name": "Acme", "product": "databricks"})
+			err := createOrAdoptAccount(context.Background(), data, &apiClient{endpoint: server.URL, key: "ok_test"})
+			if (err != nil) != test.expectedError {
+				t.Fatalf("unexpected error: %v", err)
+			}
+			if len(methods) != len(test.expectedMethods) {
+				t.Fatalf("unexpected methods: %v", methods)
+			}
+			for index, method := range methods {
+				if method != test.expectedMethods[index] {
+					t.Fatalf("unexpected methods: %v", methods)
+				}
+			}
+			if !test.expectedError && (data.Id() != "databricks_acme" || data.Get("slug") != "databricks_acme") {
+				t.Fatalf("unexpected account state: %#v", data.State())
+			}
+		})
+	}
+}
+
 func withRawConfig(t *testing.T, fields map[string]*schema.Schema, data *schema.ResourceData, configured map[string]cty.Value) *schema.ResourceData {
 	values := map[string]cty.Value{}
 	for name, field := range fields {

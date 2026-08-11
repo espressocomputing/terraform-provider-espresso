@@ -136,7 +136,7 @@ func New() *schema.Provider {
 			"api_key":  {Type: schema.TypeString, Optional: true, Sensitive: true, DefaultFunc: schema.EnvDefaultFunc("ESPRESSO_API_KEY", nil), ValidateFunc: validation.StringIsNotEmpty},
 		},
 		ResourcesMap: map[string]*schema.Resource{
-			"espresso_account": managed([4]operation{createAccount, readAccount, updateAccount, noop}, map[string]*schema.Schema{
+			"espresso_account": managed([4]operation{createOrAdoptAccount, readAccount, updateAccount, noop}, map[string]*schema.Schema{
 				"slug": {Type: schema.TypeString, Required: true, ForceNew: true, DiffSuppressFunc: func(_ string, old string, new string, data *schema.ResourceData) bool {
 					return old == canonicalAccountSlug(new, data.Get("product").(string))
 				}}, "display_name": {Type: schema.TypeString, Required: true}, "product": {Type: schema.TypeString, Required: true, ForceNew: true},
@@ -292,8 +292,31 @@ func readWarehouseAgent(ctx context.Context, data *schema.ResourceData, client *
 	return nil
 }
 
-func createAccount(ctx context.Context, data *schema.ResourceData, client *apiClient) error {
+func createOrAdoptAccount(ctx context.Context, data *schema.ResourceData, client *apiClient) error {
 	slug := accountSlug(data)
+	var existing struct {
+		Name    string `json:"name"`
+		Product string `json:"product"`
+	}
+	err := client.do(ctx, http.MethodGet, "/api/customers/"+slug, nil, &existing)
+	if err == nil {
+		if existing.Product != data.Get("product").(string) {
+			return fmt.Errorf("existing account %q has product %q, expected %q", slug, existing.Product, data.Get("product"))
+		}
+		if existing.Name != data.Get("display_name").(string) {
+			if err := client.do(ctx, http.MethodPut, "/api/customers/"+slug, map[string]any{"displayName": data.Get("display_name")}, nil); err != nil {
+				return err
+			}
+		}
+		if err := data.Set("slug", slug); err != nil {
+			return err
+		}
+		data.SetId(slug)
+		return nil
+	}
+	if !errors.Is(err, notFound) {
+		return err
+	}
 	body := map[string]any{"slug": slug, "displayName": data.Get("display_name"), "product": data.Get("product")}
 	if err := client.do(ctx, http.MethodPost, "/api/customers", body, nil); err != nil {
 		return err

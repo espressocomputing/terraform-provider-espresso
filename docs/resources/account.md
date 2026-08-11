@@ -2,6 +2,8 @@
 
 Registers and manages the display name of an Espresso account. Removing this resource from Terraform state does not delete the account from Espresso.
 
+If an account with the canonical slug already exists, the provider adopts it and reconciles its display name instead of creating a duplicate.
+
 ## Example Usage
 
 ```hcl
