@@ -1,6 +1,6 @@
 # Espresso Provider
 
-The Espresso provider manages Espresso customer accounts, Snowflake credentials, and Snowflake and Databricks Warehouse Agent settings.
+The Espresso provider manages Espresso accounts, Snowflake and Databricks credentials, and Warehouse Agent settings.
 
 ## Example Usage
 

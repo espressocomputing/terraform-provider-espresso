@@ -121,6 +121,46 @@ func TestSnowflakeCredentials(t *testing.T) {
 	}
 }
 
+func TestDatabricksCredentials(t *testing.T) {
+	var request databricksCredentials
+	server := httptest.NewServer(http.HandlerFunc(func(response http.ResponseWriter, httpRequest *http.Request) {
+		response.Header().Set("Content-Type", "application/json")
+		if httpRequest.URL.Path != "/api/customers/databricks_acme/databricks-credentials" {
+			t.Errorf("unexpected path: %s", httpRequest.URL.Path)
+		}
+		if httpRequest.Method == http.MethodPut {
+			if err := json.NewDecoder(httpRequest.Body).Decode(&request); err != nil {
+				t.Error(err)
+			}
+			json.NewEncoder(response).Encode(map[string]any{"ok": true, "message": "Connection tested and saved."})
+			return
+		}
+		json.NewEncoder(response).Encode(databricksCredentials{WorkspaceURL: "https://workspace.cloud.databricks.com", WorkspaceID: "123", WorkspaceName: "Production", ClientID: "client-id", ServicePrincipalID: "456", ServicePrincipalName: "espresso-ai-optimizer", WarehouseID: "warehouse-id", WarehouseName: "ESPRESSO_AI_WAREHOUSE"})
+	}))
+	defer server.Close()
+
+	resource := New().ResourcesMap["espresso_databricks_credentials"]
+	if !resource.Schema["client_secret"].WriteOnly || !resource.Schema["client_secret"].Sensitive {
+		t.Fatal("client_secret must be sensitive and write-only")
+	}
+	data := schema.TestResourceDataRaw(t, resource.Schema, map[string]any{
+		"account": "databricks_acme", "workspace_url": "https://workspace.cloud.databricks.com", "workspace_id": "123", "workspace_name": "Production", "client_id": "client-id", "client_secret": "secret-value", "service_principal_id": "456", "service_principal_name": "espresso-ai-optimizer", "warehouse_id": "warehouse-id", "warehouse_name": "ESPRESSO_AI_WAREHOUSE",
+	})
+	client := &apiClient{endpoint: server.URL, key: "ok_test"}
+	if err := applyDatabricksCredentials(context.Background(), data, client); err != nil {
+		t.Fatal(err)
+	}
+	if request.ClientSecret != "secret-value" || request.WarehouseID != "warehouse-id" {
+		t.Fatalf("unexpected request: %+v", request)
+	}
+	if err := readDatabricksCredentials(context.Background(), data, client); err != nil {
+		t.Fatal(err)
+	}
+	if data.Get("workspace_name") != "Production" || data.Get("warehouse_name") != "ESPRESSO_AI_WAREHOUSE" {
+		t.Fatalf("unexpected state: %+v", data.State())
+	}
+}
+
 func TestWarehouseAgents(t *testing.T) {
 	cases := []struct {
 		globalResource, warehouseResource, kind, productField, apiField, wireField string
