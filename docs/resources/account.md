@@ -1,6 +1,6 @@
 # espresso_account Resource
 
-Registers and manages the display name of an Espresso customer account. Removing this resource from Terraform state does not delete the account from Espresso.
+Registers and manages the display name of an Espresso account. Removing this resource from Terraform state does not delete the account from Espresso.
 
 ## Example Usage
 

@@ -1,6 +1,6 @@
 # Espresso Terraform provider
 
-Manage Espresso customer accounts, Snowflake credentials, and Snowflake and Databricks Warehouse Agent settings with Terraform.
+Manage Espresso accounts, Snowflake and Databricks credentials, and Warehouse Agent settings with Terraform.
 
 ## Using the provider
 
@@ -21,11 +21,7 @@ See the [provider documentation](docs/index.md) and individual resource and data
 
 ## Authentication
 
-In the Espresso dashboard, select an existing account, open **Tools → API Keys**, choose **Generate API key → Organization key**, and copy the complete `ok_` secret. It cannot be displayed again. Set it as `ESPRESSO_API_KEY` and set the dashboard API origin as `ESPRESSO_ENDPOINT`.
-
-An organization admin must generate the key. The key is scoped to the selected account's Espresso organization rather than to the user who created it. The selected account is the bootstrap account, and each managed account becomes a sibling in that organization. Proxy keys are created separately and cannot authenticate Terraform.
-
-The provider manages accounts, Snowflake credentials, and typed Snowflake and Databricks Warehouse Agent settings. Native providers continue to own warehouse creation, deletion, grants, and settings outside Espresso's control.
+In the Espresso dashboard, select an existing account, open **Tools → API Keys**, choose **Generate API key → Organization key**, and copy the complete `ok_` secret. It cannot be displayed again. Set it as `ESPRESSO_API_KEY`.
 
 ## Development
 
@@ -36,9 +32,9 @@ go build ./...
 go test ./...
 ```
 
-## One customer per Databricks workspace
+## One account per Databricks workspace
 
-An `espresso_account` is the Espresso customer boundary. Key the Terraform resources by Databricks workspace ID and give each workspace a permanent Espresso slug:
+An `espresso_account` is the Espresso account boundary. Key the Terraform resources by Databricks workspace ID and give each workspace a permanent Espresso slug:
 
 ```hcl
 variable "databricks_workspaces" {
@@ -64,7 +60,7 @@ resource "espresso_databricks_warehouse_agent" "workspace" {
   auto_opt_in = false
 }
 
-output "espresso_customer_by_workspace_id" {
+output "espresso_account_by_workspace_id" {
   value = {
     for workspace_id, account in espresso_account.databricks_workspace :
     workspace_id => account.slug
@@ -87,11 +83,11 @@ databricks_workspaces = {
 }
 ```
 
-Espresso prepends `databricks_` when a Databricks slug omits it, so these customers are stored as `databricks_acme_production` and `databricks_acme_staging`. Every global and warehouse setting for workspace `1234567890123456` must use `espresso_account.databricks_workspace["1234567890123456"].slug` as its `account`.
+Espresso prepends `databricks_` when a Databricks slug omits it, so these accounts are stored as `databricks_acme_production` and `databricks_acme_staging`. Every global and warehouse setting for workspace `1234567890123456` must use `espresso_account.databricks_workspace["1234567890123456"].slug` as its `account`.
 
-An account's `display_name` can be updated in place. Its `slug` and `product` are immutable. Removing an account resource from Terraform stops managing it but leaves the account in the Espresso dashboard.
+An account's `display_name` can be updated in place. Its `slug` and `product` are immutable. Removing an account resource from Terraform stops managing it but leaves the account in Espresso.
 
-This registers the Espresso customer; it does not install Databricks credentials or discover warehouses. Databricks onboarding must use the same Espresso slug. Keep the Warehouse Agent disabled until onboarding has populated that customer's warehouse inventory, then add the discrete warehouse resources below and enable it.
+Onboarding still needs to be run.
 
 ## Snowflake credentials
 

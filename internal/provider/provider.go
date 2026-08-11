@@ -33,6 +33,18 @@ type snowflakePublicKey struct {
 	PublicKey string `json:"publicKey"`
 }
 
+type databricksCredentials struct {
+	WorkspaceURL         string `json:"workspaceUrl"`
+	WorkspaceID          string `json:"workspaceId"`
+	WorkspaceName        string `json:"workspaceName"`
+	ClientID             string `json:"clientId"`
+	ClientSecret         string `json:"clientSecret,omitempty"`
+	ServicePrincipalID   string `json:"servicePrincipalId"`
+	ServicePrincipalName string `json:"servicePrincipalName"`
+	WarehouseID          string `json:"warehouseId"`
+	WarehouseName        string `json:"warehouseName"`
+}
+
 type warehouseAgentConfig struct {
 	Enabled    bool                      `json:"enabled"`
 	AutoOptIn  bool                      `json:"autoOptIn"`
@@ -132,6 +144,9 @@ func New() *schema.Provider {
 			"espresso_snowflake_credentials": managed([4]operation{applySnowflakeCredentials, readSnowflakeCredentials, applySnowflakeCredentials, noop}, map[string]*schema.Schema{
 				"account": {Type: schema.TypeString, Required: true, ForceNew: true}, "snowflake_account": {Type: schema.TypeString, Required: true, StateFunc: func(value any) string { return strings.ReplaceAll(value.(string), "_", "-") }}, "host": {Type: schema.TypeString, Optional: true, Computed: true, StateFunc: func(value any) string { return strings.ReplaceAll(value.(string), "_", "-") }}, "username": {Type: schema.TypeString, Required: true}, "role": {Type: schema.TypeString, Required: true}, "warehouse": {Type: schema.TypeString, Required: true},
 			}),
+			"espresso_databricks_credentials": managed([4]operation{applyDatabricksCredentials, readDatabricksCredentials, applyDatabricksCredentials, noop}, map[string]*schema.Schema{
+				"account": {Type: schema.TypeString, Required: true, ForceNew: true}, "workspace_url": {Type: schema.TypeString, Required: true}, "workspace_id": {Type: schema.TypeString, Required: true}, "workspace_name": {Type: schema.TypeString, Optional: true}, "client_id": {Type: schema.TypeString, Required: true}, "client_secret": {Type: schema.TypeString, Required: true, Sensitive: true, WriteOnly: true}, "service_principal_id": {Type: schema.TypeString, Required: true}, "service_principal_name": {Type: schema.TypeString, Required: true}, "warehouse_id": {Type: schema.TypeString, Required: true}, "warehouse_name": {Type: schema.TypeString, Optional: true},
+			}),
 			"espresso_snowflake_warehouse_agent": warehouseAgentResource("autoscaler"),
 			"espresso_snowflake_warehouse_agent_warehouse": warehouseAgentWarehouseResource("autoscaler", map[string]*schema.Schema{
 				"enabled": {Type: schema.TypeBool, Optional: true, Computed: true}, "min_clusters": {Type: schema.TypeInt, Optional: true, Computed: true}, "max_clusters": {Type: schema.TypeInt, Optional: true, Computed: true}, "scaling_policy": {Type: schema.TypeString, Optional: true, Computed: true},
@@ -199,6 +214,25 @@ func readSnowflakeCredentials(ctx context.Context, data *schema.ResourceData, cl
 
 func setSnowflakeCredentials(data *schema.ResourceData, value snowflakeCredentials) error {
 	return errors.Join(data.Set("snowflake_account", value.Account), data.Set("host", value.Host), data.Set("username", value.User), data.Set("role", value.Role), data.Set("warehouse", value.Warehouse))
+}
+
+func applyDatabricksCredentials(ctx context.Context, data *schema.ResourceData, client *apiClient) error {
+	value := databricksCredentials{
+		WorkspaceURL: data.Get("workspace_url").(string), WorkspaceID: data.Get("workspace_id").(string), WorkspaceName: data.Get("workspace_name").(string), ClientID: data.Get("client_id").(string), ClientSecret: data.Get("client_secret").(string), ServicePrincipalID: data.Get("service_principal_id").(string), ServicePrincipalName: data.Get("service_principal_name").(string), WarehouseID: data.Get("warehouse_id").(string), WarehouseName: data.Get("warehouse_name").(string),
+	}
+	if err := client.do(ctx, http.MethodPut, "/api/customers/"+data.Get("account").(string)+"/databricks-credentials", value, nil); err != nil {
+		return err
+	}
+	data.SetId(data.Get("account").(string) + "/databricks-credentials")
+	return nil
+}
+
+func readDatabricksCredentials(ctx context.Context, data *schema.ResourceData, client *apiClient) error {
+	var value databricksCredentials
+	if err := client.do(ctx, http.MethodGet, "/api/customers/"+data.Get("account").(string)+"/databricks-credentials", nil, &value); err != nil {
+		return err
+	}
+	return errors.Join(data.Set("workspace_url", value.WorkspaceURL), data.Set("workspace_id", value.WorkspaceID), data.Set("workspace_name", value.WorkspaceName), data.Set("client_id", value.ClientID), data.Set("service_principal_id", value.ServicePrincipalID), data.Set("service_principal_name", value.ServicePrincipalName), data.Set("warehouse_id", value.WarehouseID), data.Set("warehouse_name", value.WarehouseName))
 }
 
 func readSnowflakePublicKey(ctx context.Context, data *schema.ResourceData, client *apiClient) error {
