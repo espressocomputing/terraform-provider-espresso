@@ -21,7 +21,7 @@ See the [provider documentation](docs/index.md) and individual resource and data
 
 ## Authentication
 
-In the Espresso dashboard, select an existing account, open **Tools → API Keys**, choose **Generate API key → Organization key**, and copy the complete `ok_` secret. It cannot be displayed again. Set it as `ESPRESSO_API_KEY` and set the dashboard API origin as `ESPRESSO_ENDPOINT`.
+Set an Espresso organization API key as `ESPRESSO_API_KEY` and the Espresso API origin as `ESPRESSO_ENDPOINT`.
 
 ## Development
 
@@ -85,7 +85,7 @@ databricks_workspaces = {
 
 Espresso prepends `databricks_` when a Databricks slug omits it, so these accounts are stored as `databricks_acme_production` and `databricks_acme_staging`. Every global and warehouse setting for workspace `1234567890123456` must use `espresso_account.databricks_workspace["1234567890123456"].slug` as its `account`.
 
-An account's `display_name` can be updated in place. Its `slug` and `product` are immutable. Removing an account resource from Terraform stops managing it but leaves the account in the Espresso dashboard.
+An account's `display_name` can be updated in place. Its `slug` and `product` are immutable. Removing an account resource from Terraform stops managing it but leaves the account in Espresso.
 
 Onboarding still needs to be run.
 
