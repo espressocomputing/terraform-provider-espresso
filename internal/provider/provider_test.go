@@ -37,6 +37,28 @@ func TestProviderEndpointDefault(t *testing.T) {
 	}
 }
 
+func TestAPIErrorDetail(t *testing.T) {
+	tests := []struct{ name, body, want string }{
+		{"string detail", `{"detail":"Unknown warehouses: WH."}`, "Espresso API returned 422 Unprocessable Entity for PUT /api/customers/acme/settings/autoscaler/warehouses: Unknown warehouses: WH."},
+		{"validation detail", `{"detail":[{"loc":["body","enabled"],"msg":"Field required"}]}`, `Espresso API returned 422 Unprocessable Entity for PUT /api/customers/acme/settings/autoscaler/warehouses: [{"loc":["body","enabled"],"msg":"Field required"}]`},
+		{"empty body", ``, "Espresso API returned 422 Unprocessable Entity for PUT /api/customers/acme/settings/autoscaler/warehouses"},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			server := httptest.NewServer(http.HandlerFunc(func(response http.ResponseWriter, _ *http.Request) {
+				response.WriteHeader(http.StatusUnprocessableEntity)
+				response.Write([]byte(test.body))
+			}))
+			defer server.Close()
+			client := &apiClient{endpoint: server.URL, key: "ok_test"}
+			err := client.do(context.Background(), http.MethodPut, "/api/customers/acme/settings/autoscaler/warehouses", map[string]any{}, nil)
+			if err == nil || err.Error() != test.want {
+				t.Fatalf("got %v, want %q", err, test.want)
+			}
+		})
+	}
+}
+
 func TestCreateOrAdoptAccount(t *testing.T) {
 	tests := []struct {
 		name            string
