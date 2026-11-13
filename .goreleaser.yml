@@ -13,7 +13,7 @@ builds:
     flags:
       - -trimpath
     ldflags:
-      - -s -w
+      - -s -w -X github.com/espressocomputing/terraform-provider-espresso/internal/provider.Version={{ .Version }}
     goos:
       - freebsd
       - windows

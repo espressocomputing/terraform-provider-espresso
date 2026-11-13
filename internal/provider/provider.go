@@ -17,6 +17,9 @@ import (
 
 const defaultEndpoint = "https://dashboard.espressocomputing.com"
 
+// Version is set at release by goreleaser's ldflags.
+var Version = "dev"
+
 type apiClient struct{ endpoint, key string }
 
 type operation func(context.Context, *schema.ResourceData, *apiClient) error
@@ -78,6 +81,8 @@ func (c *apiClient) do(ctx context.Context, method, path string, body, result an
 	}
 	request.Header.Set("Authorization", "Bearer "+c.key)
 	request.Header.Set("Content-Type", "application/json")
+	request.Header.Set("User-Agent", "terraform-provider-espresso/"+Version)
+	request.Header.Set("X-Espresso-Client", "terraform")
 	response, err := http.DefaultClient.Do(request)
 	if err != nil {
 		return err
@@ -87,10 +92,14 @@ func (c *apiClient) do(ctx context.Context, method, path string, body, result an
 		return notFound
 	}
 	if response.StatusCode < 200 || response.StatusCode >= 300 {
+		message := fmt.Sprintf("Espresso API returned %s for %s %s", response.Status, method, path)
 		if detail := errorDetail(response.Body); detail != "" {
-			return fmt.Errorf("Espresso API returned %s for %s %s: %s", response.Status, method, path, detail)
+			message += ": " + detail
 		}
-		return fmt.Errorf("Espresso API returned %s for %s %s", response.Status, method, path)
+		if trace := traceparent(response.Header); trace != "" {
+			message += " (traceparent " + trace + ")"
+		}
+		return errors.New(message)
 	}
 	if result == nil || response.StatusCode == http.StatusNoContent {
 		return nil
@@ -112,6 +121,23 @@ func errorDetail(body io.Reader) string {
 		return string(parsed.Detail)
 	}
 	return strings.TrimSpace(string(raw))
+}
+
+// traceparent returns the request's trace ID from the API's Server-Timing header,
+// which Espresso support can look the failure up by.
+func traceparent(header http.Header) string {
+	for _, entry := range strings.Split(header.Get("Server-Timing"), ",") {
+		name, params, _ := strings.Cut(strings.TrimSpace(entry), ";")
+		if name != "traceparent" {
+			continue
+		}
+		for _, param := range strings.Split(params, ";") {
+			if value, ok := strings.CutPrefix(strings.TrimSpace(param), "desc="); ok {
+				return strings.Trim(value, `"`)
+			}
+		}
+	}
+	return ""
 }
 
 func diagnose(op operation) func(context.Context, *schema.ResourceData, any) diag.Diagnostics {

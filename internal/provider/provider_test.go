@@ -38,14 +38,22 @@ func TestProviderEndpointDefault(t *testing.T) {
 }
 
 func TestAPIErrorDetail(t *testing.T) {
-	tests := []struct{ name, body, want string }{
-		{"string detail", `{"detail":"Unknown warehouses: WH."}`, "Espresso API returned 422 Unprocessable Entity for PUT /api/customers/acme/settings/autoscaler/warehouses: Unknown warehouses: WH."},
-		{"validation detail", `{"detail":[{"loc":["body","enabled"],"msg":"Field required"}]}`, `Espresso API returned 422 Unprocessable Entity for PUT /api/customers/acme/settings/autoscaler/warehouses: [{"loc":["body","enabled"],"msg":"Field required"}]`},
-		{"empty body", ``, "Espresso API returned 422 Unprocessable Entity for PUT /api/customers/acme/settings/autoscaler/warehouses"},
+	const trace = "00-0af7651916cd43dd8448eb211c80319c-b7ad6b7169203331-01"
+	tests := []struct{ name, body, serverTiming, want string }{
+		{"string detail", `{"detail":"Unknown warehouses: WH."}`, "", "Espresso API returned 422 Unprocessable Entity for PUT /api/customers/acme/settings/autoscaler/warehouses: Unknown warehouses: WH."},
+		{"validation detail", `{"detail":[{"loc":["body","enabled"],"msg":"Field required"}]}`, "", `Espresso API returned 422 Unprocessable Entity for PUT /api/customers/acme/settings/autoscaler/warehouses: [{"loc":["body","enabled"],"msg":"Field required"}]`},
+		{"empty body", ``, "", "Espresso API returned 422 Unprocessable Entity for PUT /api/customers/acme/settings/autoscaler/warehouses"},
+		{"traceparent", `{"detail":"Unknown warehouses: WH."}`, `db;dur=3, traceparent;desc="` + trace + `"`, "Espresso API returned 422 Unprocessable Entity for PUT /api/customers/acme/settings/autoscaler/warehouses: Unknown warehouses: WH. (traceparent " + trace + ")"},
 	}
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			server := httptest.NewServer(http.HandlerFunc(func(response http.ResponseWriter, _ *http.Request) {
+			server := httptest.NewServer(http.HandlerFunc(func(response http.ResponseWriter, request *http.Request) {
+				if request.Header.Get("X-Espresso-Client") != "terraform" || request.Header.Get("User-Agent") != "terraform-provider-espresso/dev" {
+					t.Errorf("unexpected client headers: %v", request.Header)
+				}
+				if test.serverTiming != "" {
+					response.Header().Set("Server-Timing", test.serverTiming)
+				}
 				response.WriteHeader(http.StatusUnprocessableEntity)
 				response.Write([]byte(test.body))
 			}))
