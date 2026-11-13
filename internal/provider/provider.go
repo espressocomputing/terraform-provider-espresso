@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"net/http"
 	"strings"
 
@@ -86,12 +87,31 @@ func (c *apiClient) do(ctx context.Context, method, path string, body, result an
 		return notFound
 	}
 	if response.StatusCode < 200 || response.StatusCode >= 300 {
-		return fmt.Errorf("Espresso API returned %s", response.Status)
+		if detail := errorDetail(response.Body); detail != "" {
+			return fmt.Errorf("Espresso API returned %s for %s %s: %s", response.Status, method, path, detail)
+		}
+		return fmt.Errorf("Espresso API returned %s for %s %s", response.Status, method, path)
 	}
 	if result == nil || response.StatusCode == http.StatusNoContent {
 		return nil
 	}
 	return json.NewDecoder(response.Body).Decode(result)
+}
+
+// errorDetail returns the API's "detail" message, or the raw body when it has none.
+func errorDetail(body io.Reader) string {
+	raw, _ := io.ReadAll(io.LimitReader(body, 4096))
+	var parsed struct {
+		Detail json.RawMessage `json:"detail"`
+	}
+	if json.Unmarshal(raw, &parsed) == nil && len(parsed.Detail) > 0 {
+		var message string
+		if json.Unmarshal(parsed.Detail, &message) == nil {
+			return message
+		}
+		return string(parsed.Detail)
+	}
+	return strings.TrimSpace(string(raw))
 }
 
 func diagnose(op operation) func(context.Context, *schema.ResourceData, any) diag.Diagnostics {
