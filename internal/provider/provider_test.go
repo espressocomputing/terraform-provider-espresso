@@ -25,6 +25,18 @@ func TestProviderSchema(t *testing.T) {
 	}
 }
 
+func TestProviderEndpointDefault(t *testing.T) {
+	t.Setenv("ESPRESSO_ENDPOINT", "")
+	value, err := New().Schema["endpoint"].DefaultValue()
+	if err != nil || value != "https://dashboard.espressocomputing.com" {
+		t.Fatalf("unexpected endpoint default: %v, %v", value, err)
+	}
+	t.Setenv("ESPRESSO_ENDPOINT", "https://staging.example.com")
+	if value, _ := New().Schema["endpoint"].DefaultValue(); value != "https://staging.example.com" {
+		t.Fatalf("ESPRESSO_ENDPOINT was not honored: %v", value)
+	}
+}
+
 func TestCreateOrAdoptAccount(t *testing.T) {
 	tests := []struct {
 		name            string

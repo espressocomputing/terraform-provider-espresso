@@ -21,4 +21,4 @@ In the Espresso dashboard, select an existing account, open **Tools → API Keys
 ## Argument Reference
 
 - `api_key` - (Optional, Sensitive) Espresso organization API key. May also be set with `ESPRESSO_API_KEY`.
-- `endpoint` - (Optional) Espresso API origin.
+- `endpoint` - (Optional) Espresso API origin. Defaults to `https://dashboard.espressocomputing.com`. May also be set with `ESPRESSO_ENDPOINT`.

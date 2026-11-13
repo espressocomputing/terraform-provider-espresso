@@ -14,6 +14,8 @@ import (
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/validation"
 )
 
+const defaultEndpoint = "https://dashboard.espressocomputing.com"
+
 type apiClient struct{ endpoint, key string }
 
 type operation func(context.Context, *schema.ResourceData, *apiClient) error
@@ -132,7 +134,7 @@ func accountSlug(data *schema.ResourceData) string {
 func New() *schema.Provider {
 	return &schema.Provider{
 		Schema: map[string]*schema.Schema{
-			"endpoint": {Type: schema.TypeString, Optional: true, DefaultFunc: schema.EnvDefaultFunc("ESPRESSO_ENDPOINT", nil), ValidateFunc: validation.StringIsNotEmpty},
+			"endpoint": {Type: schema.TypeString, Optional: true, DefaultFunc: schema.EnvDefaultFunc("ESPRESSO_ENDPOINT", defaultEndpoint), ValidateFunc: validation.StringIsNotEmpty},
 			"api_key":  {Type: schema.TypeString, Optional: true, Sensitive: true, DefaultFunc: schema.EnvDefaultFunc("ESPRESSO_API_KEY", nil), ValidateFunc: validation.StringIsNotEmpty},
 		},
 		ResourcesMap: map[string]*schema.Resource{
